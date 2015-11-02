@@ -6,6 +6,7 @@ import java.util.Random;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Material;
+import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitScheduler;
@@ -15,24 +16,29 @@ import fr.skyost.seasons.SkyoseasonsAPI;
 
 public class SnowPlacer extends BukkitRunnable {
 	
+	public static final HashSet<Biome> forbiddenBiomes = new HashSet<Biome>();
 	public static final HashSet<Material> forbiddenTypes = new HashSet<Material>();
 	
 	private final Random random = new Random();
-	private final BukkitScheduler scheduler = Bukkit.getScheduler();
 	
 	private final SeasonWorld world;
+	private final BukkitScheduler scheduler;
+	
+	private boolean isCancelled = false;
 	
 	public SnowPlacer(final SeasonWorld world) {
 		this.world = world;
+		this.scheduler = Bukkit.getScheduler();
 	}
 
 	@Override
 	public final void run() {
 		for(final Chunk chunk : world.world.getLoadedChunks()) {
-			final int x = random.nextInt(16);
-			final int z = random.nextInt(16);
-			final Block block = world.world.getHighestBlockAt(chunk.getBlock(x, 0, z).getLocation());
-			if(block.getLightLevel() >= 12) {
+			final Block block = world.world.getHighestBlockAt(chunk.getBlock(random.nextInt(16), 0, random.nextInt(16)).getLocation());
+			/*if(block.getLightLevel() >= 12) {
+				continue;
+			}*/
+			if(forbiddenBiomes.contains(block.getBiome())) {
 				continue;
 			}
 			final Material type = block.getType();
@@ -53,7 +59,15 @@ public class SnowPlacer extends BukkitRunnable {
 			}
 			block.setType(Material.SNOW);
 		}
-		scheduler.scheduleSyncDelayedTask(SkyoseasonsAPI.getPlugin(), this, random.nextInt(world.season.snowPlacerDelay) + 1L);
+		if(!isCancelled) {
+			scheduler.scheduleSyncDelayedTask(SkyoseasonsAPI.getPlugin(), this, random.nextInt(world.season.snowPlacerDelay) + 1L);
+		}
+	}
+	
+	@Override
+	public final void cancel() {
+		isCancelled = true;
+		super.cancel();
 	}
 
 }

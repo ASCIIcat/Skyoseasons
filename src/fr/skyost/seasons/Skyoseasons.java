@@ -2,6 +2,7 @@ package fr.skyost.seasons;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,7 +20,6 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import com.google.common.io.Files;
 import com.google.common.primitives.Ints;
 
 import fr.skyost.seasons.commands.CalendarCommand;
@@ -31,8 +31,8 @@ import fr.skyost.seasons.utils.MetricsLite;
 import fr.skyost.seasons.utils.MonthLinkedHashMap;
 import fr.skyost.seasons.utils.Skyupdater;
 import fr.skyost.seasons.utils.Utils;
-import fr.skyost.seasons.utils.packets.PacketPluginHook.PacketPluginHookInitializationException;
-import fr.skyost.seasons.utils.packets.ProtocolLibHook;
+import fr.skyost.seasons.utils.packets.AbstractProtocolLibHook;
+import fr.skyost.seasons.utils.packets.AbstractProtocolLibHook.PacketPluginHookInitializationException;
 import fr.skyost.seasons.utils.packets.SnowPlacer;
 import fr.skyost.seasons.utils.spout.SpoutHook;
 
@@ -44,7 +44,7 @@ public class Skyoseasons extends JavaPlugin {
 	protected static Skyoseasons instance;
 	
 	protected static SpoutHook spout;
-	protected static ProtocolLibHook protocolLib;
+	protected static AbstractProtocolLibHook protocolLib;
 	
 	protected static final HashMap<String, Season> seasons = new HashMap<String, Season>();
 	protected static final HashMap<String, SeasonWorld> worlds = new HashMap<String, SeasonWorld>();
@@ -77,13 +77,14 @@ public class Skyoseasons extends JavaPlugin {
 				new WorldConfig(new File(worldsDir, world.world.getName() + ".yml"), world).save();
 			}
 			config.save();
+			Utils.clearFields(this);
 		}
 		catch(Exception ex) {
 			ex.printStackTrace();
 		}
 	}
 	
-	private final void setupPlugin(final PluginManager manager) throws InvalidConfigurationException, PacketPluginHookInitializationException, IOException {
+	private final void setupPlugin(final PluginManager manager) throws InvalidConfigurationException, PacketPluginHookInitializationException, IOException, ClassNotFoundException, IllegalArgumentException, IllegalAccessException, NoSuchFieldException, SecurityException, InstantiationException, InvocationTargetException, NoSuchMethodException {
 		instance = this;
 		final File dataFolder = this.getDataFolder();
 		config = new PluginConfig(dataFolder);
@@ -102,8 +103,15 @@ public class Skyoseasons extends JavaPlugin {
 		if(config.enableProtocolLib) {
 			final Plugin protocolLibPlugin = manager.getPlugin("ProtocolLib");
 			if(protocolLibPlugin != null && protocolLibPlugin.isEnabled()) {
-				protocolLib = new ProtocolLibHook(this);
-				logsManager.log("ProtocolLib hooked !");
+				String state;
+				try {
+					protocolLib = (AbstractProtocolLibHook)Class.forName("fr.skyost.seasons.utils.packets." + Utils.MC_SERVER_VERSION + ".ProtocolLibHook").getConstructor(Plugin.class).newInstance(this);
+					state = "loaded";
+				}
+				catch(final ClassNotFoundException ex) {
+					state = "cannot be found";
+				}
+				logsManager.log("ProtocolLib hook for MC " + Utils.MC_SERVER_VERSION + " " + state + " !");
 			}
 		}
 		if(config.enableMetrics) {
@@ -144,17 +152,17 @@ public class Skyoseasons extends JavaPlugin {
 								final String key = entry.getKey();
 								final String value = entry.getValue();
 								if(protocolLib.getBiomeID(Biome.valueOf(key)) == null) {
-									logsManager.log("Currently, the ProtocolLib hook does not supports the biome '" + key + "'. Try another one or disable the ProtocolLib hook.", Level.SEVERE);
+									logsManager.log("Currently, the ProtocolLib hook does not support the biome '" + key + "'. Try another one or disable the ProtocolLib hook.", Level.SEVERE);
 									manager.disablePlugin(this);
 									return;
 								}
 								else if(protocolLib.getBiomeID(Biome.valueOf(value)) == null) {
-									logsManager.log("Currently, the ProtocolLib hook does not supports the biome '" + value + "'. Try another one or disable the ProtocolLib hook.", Level.SEVERE);
+									logsManager.log("Currently, the ProtocolLib hook does not support the biome '" + value + "'. Try another one or disable the ProtocolLib hook.", Level.SEVERE);
 									manager.disablePlugin(this);
 									return;
 								}
 								else if(protocolLib.getBiomeID(season.defaultBiome) == null) {
-									logsManager.log("Currently, the ProtocolLib hook does not supports the biome '" + season.defaultBiome.name() + "'. Try another one or disable the ProtocolLib hook.", Level.SEVERE);
+									logsManager.log("Currently, the ProtocolLib hook does not support the biome '" + season.defaultBiome.name() + "'. Try another one or disable the ProtocolLib hook.", Level.SEVERE);
 									manager.disablePlugin(this);
 									return;
 								}
@@ -186,6 +194,9 @@ public class Skyoseasons extends JavaPlugin {
 			for(final String forbiddenType : config.snowPlacerForbiddenTypes) {
 				SnowPlacer.forbiddenTypes.add(Material.valueOf(forbiddenType));
 			}
+			for(final String forbiddenBiome : config.snowPlacerForbiddenBiomes) {
+				SnowPlacer.forbiddenBiomes.add(Biome.valueOf(forbiddenBiome));
+			}
 		}
 	}
 	
@@ -213,7 +224,7 @@ public class Skyoseasons extends JavaPlugin {
 			if(backupsDir != null) {
 				final File backup = new File(backupsDir, worldName);
 				if(!backup.exists()) {
-					Files.copy(new File(worldName), backup);
+					Utils.copy(new File(worldName), backup);
 				}
 			}
 			final File configFile = new File(worldsDir, worldName + ".yml");
@@ -243,19 +254,19 @@ public class Skyoseasons extends JavaPlugin {
 	
 	private final void setupCommands() {
 		final PluginCommand skyoseasons = this.getCommand("skyoseasons");
-		skyoseasons.setUsage(ChatColor.RED + "/skyoseasons [day [new-day]|month [month]|season [season]|season-month [season-month]|year [year]].");
+		skyoseasons.setUsage(ChatColor.RED + skyoseasons.getUsage());
 		skyoseasons.setExecutor(new SkyoseasonsCommand());
 		final PluginCommand calendar = this.getCommand("calendar");
-		calendar.setUsage(ChatColor.GOLD + "/calendar [world].");
+		calendar.setUsage(ChatColor.GOLD + calendar.getUsage());
 		calendar.setExecutor(new CalendarCommand());
 	}
 	
 	private static final SeasonConfig[] getDefaultSeasons(final File seasonsFolder) {
 		final List<SeasonConfig> configs = new ArrayList<SeasonConfig>();
-		configs.add(new SeasonConfig(new File(seasonsFolder, "spring.yml"), "Spring", "Summer", Biome.JUNGLE, true, false, true, 600, "§5A new purple Spring day !", 600, "§5Night is coming. Prepare yourself !", "§dIt is Spring, flowers grow on trees...", "§d/month/, when pink and purple are everywhere...", true, true, 100));
-		configs.add(new SeasonConfig(new File(seasonsFolder, "summer.yml"), "Summer", "Autumn", Biome.PLAINS, false, false, true, 700, "§eA beautiful Summer day is coming !", 500, "§eYet another beautiful but dangerous night.", "§eIt is Summer, enjoy the sunshine !", "§eWe are in /month/, let's go to the beach !", false, true, 120));
-		configs.add(new SeasonConfig(new File(seasonsFolder, "autumn.yml"), "Autumn", "Winter", Biome.DESERT, true, true, true, 600, "§7It is a another sad day of Autumn.", 600, "§7Ready for another night ?", "§8It is Autumn, end of the beach and the sea...", "§8We are in the sad month of /month/.", true, false, 100));
-		configs.add(new SeasonConfig(new File(seasonsFolder, "winter.yml"), "Winter", "Spring", Biome.ICE_PLAINS, true, false, false, 500, "§fBrrrr... Winter days are so rude !", 700, "§fNights are so cold in Winter...", "§fIt is Winter, say welcome to the snow !", "§fThe cold month of /month/ is here...", true, false, 100));
+		configs.add(new SeasonConfig(new File(seasonsFolder, "spring.yml"), "Spring", "Summer", Biome.JUNGLE, true, false, true, 600, ChatColor.DARK_PURPLE + "A new purple Spring day !", 600, ChatColor.DARK_PURPLE + "Night is coming. Prepare yourself !", ChatColor.LIGHT_PURPLE + "It is Spring, flowers grow on trees...", ChatColor.LIGHT_PURPLE + "/month/, when pink and purple are everywhere...", true, true, 100, false));
+		configs.add(new SeasonConfig(new File(seasonsFolder, "summer.yml"), "Summer", "Autumn", Biome.PLAINS, false, false, true, 700, ChatColor.YELLOW + "A beautiful Summer day is coming !", 500, ChatColor.YELLOW + "Yet another beautiful but dangerous night.", ChatColor.YELLOW + "It is Summer, enjoy the sunshine !", ChatColor.YELLOW + "We are in /month/, let's go to the beach !", false, true, 120, false));
+		configs.add(new SeasonConfig(new File(seasonsFolder, "autumn.yml"), "Autumn", "Winter", Biome.DESERT, true, true, true, 600, ChatColor.GRAY + "It is a another sad day of Autumn.", 600, ChatColor.GRAY + "Ready for another night ?", ChatColor.DARK_GRAY + "It is Autumn, end of the beach and the sea...", ChatColor.DARK_GRAY + "We are in the sad month of /month/.", true, false, 100, false));
+		configs.add(new SeasonConfig(new File(seasonsFolder, "winter.yml"), "Winter", "Spring", Biome.ICE_PLAINS, true, false, false, 500, ChatColor.WHITE + "Brrrr... Winter days are so rude !", 700, ChatColor.WHITE + "Nights are so cold in Winter...", ChatColor.WHITE + "It is Winter, say welcome to the snow !", ChatColor.WHITE + "The cold month of /month/ is here...", true, false, 100, true));
 		return configs.toArray(new SeasonConfig[configs.size()]);
 	}
 	
