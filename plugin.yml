@@ -14,15 +14,16 @@
 # ########################## #
 #                            #
 #        .:By Skyost:.       #
+#      ASCIIcat Edit     #
 #                            #
 # ########################## #
 
 name: Skyoseasons
 main: fr.skyost.seasons.Skyoseasons
 description: Add seasons to your Bukkit server !
-version: 4.0.2
-softdepend: [Spout, ProtocolLib]
-author: Skyost
+version: 4.1.0
+softdepend: [ProtocolLib]
+author: Skyost - ASCIIcat Edit
 website: http://dev.bukkit.org/bukkit-plugins/skyoseasons/
 commands:
  skyoseasons:

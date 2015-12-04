@@ -68,14 +68,18 @@ public class EventsListener implements Listener {
 		if(event.isCancelled()) {
 			return;	
 		}
-		final SeasonWorld seasonWorld = event.getWorld();
-		final int newDay = event.getNewDay();
-		final int curDay = event.getCurrentDay(); // We store it because it is updated below.
-		seasonWorld.day = newDay;
-		seasonWorld.updateCalendar(curDay, newDay);
-		if(event.getModificationCause() == ModificationCause.PLUGIN && curDay > newDay) {
-			final Month next = SkyoseasonsAPI.getMonth(seasonWorld.month.next);
-			Bukkit.getPluginManager().callEvent(new MonthChangeEvent(seasonWorld, next, seasonWorld.season.monthsMessage.replace("/month/", next.name), ModificationCause.PLUGIN));
+		
+		if(SkyoseasonsAPI.getConfig().enableCalendar)
+		{	
+			final SeasonWorld seasonWorld = event.getWorld();
+			final int newDay = event.getNewDay();
+			final int curDay = event.getCurrentDay(); // We store it because it is updated below.
+			seasonWorld.day = newDay;
+			seasonWorld.updateCalendar(curDay, newDay);
+			if(event.getModificationCause() == ModificationCause.PLUGIN && curDay > newDay) {
+				final Month next = SkyoseasonsAPI.getMonth(seasonWorld.month.next);
+				Bukkit.getPluginManager().callEvent(new MonthChangeEvent(seasonWorld, next, seasonWorld.season.monthsMessage.replace("/month/", next.name), ModificationCause.PLUGIN));
+			}
 		}
 	}
 	
@@ -84,34 +88,37 @@ public class EventsListener implements Listener {
 		if(event.isCancelled()) {
 			return;
 		}
-		final LogsManager logs = SkyoseasonsAPI.getLogsManager();
-		final SeasonWorld seasonWorld = event.getWorld();
-		final Month newMonth = event.getNewMonth();
-		final Month curMonth = event.getCurrentMonth(); // Same here.
-		seasonWorld.month = newMonth;
-		final String message = event.getMessage();
-		if(message != null) {
-			for(final Player player : seasonWorld.world.getPlayers()) {
-				player.sendMessage(message);
-			}
-			logs.log(message, Level.INFO, seasonWorld.world);
-		}
-		if(event.getModificationCause() == ModificationCause.PLUGIN) {
-			seasonWorld.seasonMonth++;
-			if(seasonWorld.seasonMonth >= seasonWorld.season.months) {
-			final Season next = SkyoseasonsAPI.getSeason(seasonWorld.season.next);
-				if(next != null) {
-					Bukkit.getPluginManager().callEvent(new SeasonChangeEvent(seasonWorld, next, next.message, ModificationCause.PLAYER));
+		if(SkyoseasonsAPI.getConfig().enableCalendar)
+		{
+			final LogsManager logs = SkyoseasonsAPI.getLogsManager();
+			final SeasonWorld seasonWorld = event.getWorld();
+			final Month newMonth = event.getNewMonth();
+			final Month curMonth = event.getCurrentMonth(); // Same here.
+			seasonWorld.month = newMonth;
+			final String message = event.getMessage();
+			if(message != null) {
+				for(final Player player : seasonWorld.world.getPlayers()) {
+					player.sendMessage(message);
 				}
-				else {
-					logs.log("Sorry but the next season of : '" + seasonWorld.season.name + "' was not found.", Level.SEVERE);
+				logs.log(message, Level.INFO, seasonWorld.world);
+			}
+			if(event.getModificationCause() == ModificationCause.PLUGIN) {
+				seasonWorld.seasonMonth++;
+				if(seasonWorld.seasonMonth >= seasonWorld.season.months) {
+				final Season next = SkyoseasonsAPI.getSeason(seasonWorld.season.next);
+					if(next != null) {
+						Bukkit.getPluginManager().callEvent(new SeasonChangeEvent(seasonWorld, next, next.message, ModificationCause.PLAYER));
+					}
+					else {
+						logs.log("Sorry but the next season of : '" + seasonWorld.season.name + "' was not found.", Level.SEVERE);
+					}
+				}
+				if(curMonth.number > newMonth.number) {
+					Bukkit.getPluginManager().callEvent(new YearChangeEvent(seasonWorld, seasonWorld.year + 1, SkyoseasonsAPI.getCalendarConfig().messagesYear.replace("/year/", String.valueOf(seasonWorld.year + 1)), ModificationCause.PLAYER));
 				}
 			}
-			if(curMonth.number > newMonth.number) {
-				Bukkit.getPluginManager().callEvent(new YearChangeEvent(seasonWorld, seasonWorld.year + 1, SkyoseasonsAPI.getCalendarConfig().messagesYear.replace("/year/", String.valueOf(seasonWorld.year + 1)), ModificationCause.PLAYER));
-			}
+			seasonWorld.updateCalendarForViewers();
 		}
-		seasonWorld.updateCalendarForViewers();
 	}
 	
 	@EventHandler(priority = EventPriority.HIGHEST)
@@ -127,13 +134,17 @@ public class EventsListener implements Listener {
 		if(event.isCancelled()) {
 			return;
 		}
-		final SeasonWorld seasonWorld = event.getWorld();
-		seasonWorld.year = event.getNewYear();
-		final String message = event.getMessage();
-		for(final Player player : seasonWorld.world.getPlayers()) {
-			player.sendMessage(message);
+		
+		if(SkyoseasonsAPI.getConfig().enableCalendar)
+		{
+			final SeasonWorld seasonWorld = event.getWorld();
+			seasonWorld.year = event.getNewYear();
+			final String message = event.getMessage();
+			for(final Player player : seasonWorld.world.getPlayers()) {
+				player.sendMessage(message);
+			}
+			SkyoseasonsAPI.getLogsManager().log(message, Level.INFO, seasonWorld.world);
 		}
-		SkyoseasonsAPI.getLogsManager().log(message, Level.INFO, seasonWorld.world);
 	}
 	
 	@EventHandler

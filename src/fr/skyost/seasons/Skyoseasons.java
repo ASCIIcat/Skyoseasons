@@ -34,7 +34,6 @@ import fr.skyost.seasons.utils.Utils;
 import fr.skyost.seasons.utils.packets.AbstractProtocolLibHook;
 import fr.skyost.seasons.utils.packets.AbstractProtocolLibHook.PacketPluginHookInitializationException;
 import fr.skyost.seasons.utils.packets.SnowPlacer;
-import fr.skyost.seasons.utils.spout.SpoutHook;
 
 public class Skyoseasons extends JavaPlugin {
 	
@@ -43,7 +42,6 @@ public class Skyoseasons extends JavaPlugin {
 	protected static LogsManager logsManager;
 	protected static Skyoseasons instance;
 	
-	protected static SpoutHook spout;
 	protected static AbstractProtocolLibHook protocolLib;
 	
 	protected static final HashMap<String, Season> seasons = new HashMap<String, Season>();
@@ -93,13 +91,7 @@ public class Skyoseasons extends JavaPlugin {
 		calendar.load();
 		logsManager = new LogsManager(config.logsConsoleEnable ? this.getLogger() : null, config.logsFileEnable ? new File(config.logsFileDir) : null);
 		manager.registerEvents(new EventsListener(), this);
-		if(config.enableSpout) {
-			final Plugin spoutPlugin = manager.getPlugin("Spout");
-			if(spoutPlugin != null && spoutPlugin.isEnabled()) {
-				spout = new SpoutHook(this);
-				logsManager.log("Spout hooked !");
-			}
-		}
+
 		if(config.enableProtocolLib) {
 			final Plugin protocolLibPlugin = manager.getPlugin("ProtocolLib");
 			if(protocolLibPlugin != null && protocolLibPlugin.isEnabled()) {

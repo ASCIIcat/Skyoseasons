@@ -52,6 +52,9 @@ public class PluginConfig extends Skyoconfig {
 	@ConfigOptions(name = "enable.skyupdater")
 	public boolean enableSkyupdater = true;
 	
+	@ConfigOptions(name = "enable.calendar")
+	public boolean enableCalendar = false;
+	
 	public PluginConfig(final File dataFolder) {
 		super(new File(dataFolder, "config.yml"), Arrays.asList("####################################################### #", "              Skyoseasons Configuration                 #", " Check http://dev.bukkit.org/bukkit-plugins/skyoseasons #", "               for more informations.                   #", "####################################################### #"));
 		seasonsDir = new File(dataFolder + File.separator + "seasons").getPath();

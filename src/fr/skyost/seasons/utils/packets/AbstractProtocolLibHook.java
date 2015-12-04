@@ -57,18 +57,24 @@ public abstract class AbstractProtocolLibHook {
 
 			@Override
 			public void onPacketSending(final PacketEvent event) {
-				final Player player = event.getPlayer();
-				final SeasonWorld world = SkyoseasonsAPI.getSeasonWorldExact(player.getWorld());
-				if(world == null) {
-					return;
+				try{
+					final Player player = event.getPlayer();
+					final SeasonWorld world = SkyoseasonsAPI.getSeasonWorldExact(player.getWorld());
+					if(world == null) {
+						return;
+					}
+					final PacketType type = event.getPacketType();
+					if(type == PacketType.Play.Server.MAP_CHUNK) {
+						translateMapChunk(event.getPacket(), event.getPlayer(), world.season);
+					}
+					else if(type == PacketType.Play.Server.MAP_CHUNK_BULK) {
+						translateMapChunkBulk(event.getPacket(), event.getPlayer(), world.season);
+					}
 				}
-				final PacketType type = event.getPacketType();
-				if(type == PacketType.Play.Server.MAP_CHUNK) {
-					translateMapChunk(event.getPacket(), event.getPlayer(), world.season);
+				catch(Exception e){
+					e.printStackTrace();
 				}
-				else if(type == PacketType.Play.Server.MAP_CHUNK_BULK) {
-					translateMapChunkBulk(event.getPacket(), event.getPlayer(), world.season);
-				}
+				
 			}
 
 		});

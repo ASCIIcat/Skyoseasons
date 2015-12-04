@@ -149,9 +149,6 @@ public class SeasonWorld {
 			if(season.resourcePackUrl != null) {
 				player.setResourcePack(season.resourcePackUrl);
 			}
-			if(Skyoseasons.spout != null && Skyoseasons.spout.isSpoutPlayer(player)) {
-				Skyoseasons.spout.sendEffects(player, season.effects);
-			}
 		}
 		Skyoseasons.logsManager.log(season.message, Level.INFO, world);
 		final TimeControl task = new TimeControl(this, season.daylength, season.nightLength, Skyoseasons.config.refreshTime);
@@ -195,6 +192,8 @@ public class SeasonWorld {
 				if(hook == null) {
 					for(final Chunk chunk : chunks) {
 						world.refreshChunk(chunk.getX(), chunk.getZ());
+						//chunk.unload(true);
+						//chunk.load();
 					}
 				}
 				else {

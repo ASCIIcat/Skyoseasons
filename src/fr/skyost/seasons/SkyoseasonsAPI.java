@@ -14,7 +14,6 @@ import fr.skyost.seasons.events.calendar.SeasonChangeEvent;
 import fr.skyost.seasons.events.calendar.YearChangeEvent;
 import fr.skyost.seasons.utils.LogsManager;
 import fr.skyost.seasons.utils.packets.AbstractProtocolLibHook;
-import fr.skyost.seasons.utils.spout.SpoutHook;
 
 /**
  * The API of Skyoseasons.
@@ -65,15 +64,6 @@ public class SkyoseasonsAPI {
 		return Skyoseasons.instance;
 	}
 	
-	/**
-	 * Gets the Spout hook.
-	 * 
-	 * @return The Spout hook or null if it is disabled.
-	 */
-	
-	public static final SpoutHook getSpoutHook() {
-		return Skyoseasons.spout;
-	}
 	
 	/**
 	 * Gets the ProtocolLib hook.
