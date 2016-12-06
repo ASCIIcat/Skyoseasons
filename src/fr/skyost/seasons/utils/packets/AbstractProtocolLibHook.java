@@ -2,7 +2,9 @@ package fr.skyost.seasons.utils.packets;
 
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map.Entry;
 
 import org.bukkit.Bukkit;
@@ -11,8 +13,10 @@ import org.bukkit.World;
 import org.bukkit.block.Biome;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.weather.WeatherChangeEvent;
+import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.plugin.Plugin;
 
 import com.comphenix.protocol.PacketType;
@@ -36,45 +40,69 @@ public abstract class AbstractProtocolLibHook {
 	private final HashMap<Biome, Byte> biomes = new HashMap<Biome, Byte>();
 	protected byte defaultBiomeId = 0;
 	
-	public AbstractProtocolLibHook(final Plugin plugin) throws PacketPluginHookInitializationException {
-		Bukkit.getPluginManager().registerEvents(new PacketPluginHookEvents(), plugin);
+	public AbstractProtocolLibHook(final Plugin protocolLib, final Plugin skyoseasons) throws PacketPluginHookInitializationException {
+		Bukkit.getPluginManager().registerEvents(new PacketPluginHookEvents(), skyoseasons);
 		try {
-			final Class<?> biomeBase = Utils.getMCClass("BiomeBase");
-			for(final Field field : biomeBase.getFields()) {
-				for(final Biome biome : Biome.values()) {
-					final String biomeName = biome.name();
-					final String fieldName = field.getName();
-					if(biomeName.equals(fieldName) || biomeName.replace("FOREST", "F").equals(fieldName)) {
-						biomes.put(biome, Byte.valueOf(String.valueOf(field.get(biomeBase).getClass().getField("id").get(field.get(biomeBase)))));
+			final Class<?> biomeBaseClass = Utils.getMCClass("BiomeBase");
+			if(Utils.getMCClass("Biomes") != null) { // Checks for 1.9
+				final Class<?> registryMaterialsClass = Utils.getMCClass("RegistryMaterials");
+				final Class<?> minecraftKeyClass = Utils.getMCClass("MinecraftKey");
+				final Object registryId = registryMaterialsClass.cast(biomeBaseClass.getField("REGISTRY_ID").get(null));
+				final Iterator<?> iterator = (Iterator<?>)registryMaterialsClass.getMethod("iterator").invoke(registryId);
+				// Initialization :
+				final Method a = biomeBaseClass.getMethod("a", biomeBaseClass);
+				final Field b = minecraftKeyClass.getDeclaredField("b");
+				b.setAccessible(true);
+				final Method bMethod = Utils.getMethodWithUnknownType(registryMaterialsClass, "b", 1);
+				while(iterator.hasNext()) {
+					final Object biomeBase = biomeBaseClass.cast(iterator.next());
+					final Byte id = (byte)((int)a.invoke(null, biomeBase));
+					for(final Biome biome : Biome.values()) {
+						if(biomes.containsKey(biome)) {
+							continue;
+						}
+						final String biomeName = biome.name();
+						final Object minecraftKey = minecraftKeyClass.cast(bMethod.invoke(registryId, biomeBase));
+						final String reflectionName = b.get(minecraftKey).toString().toUpperCase();
+						if(biomeName.equals(reflectionName)) {
+							biomes.put(biome, id);
+						}
+					}
+				}
+			}
+			else {
+				for(final Field field : biomeBaseClass.getFields()) {
+					for(final Biome biome : Biome.values()) {
+						final String biomeName = biome.name();
+						final String fieldName = field.getName();
+						if(biomeName.equals(fieldName) || biomeName.replace("FOREST", "F").equals(fieldName)) {
+							biomes.put(biome, Byte.valueOf(String.valueOf(field.get(biomeBaseClass).getClass().getField("id").get(field.get(biomeBaseClass)))));
+						}
 					}
 				}
 			}
 		}
 		catch(final Exception ex) {
+			ex.printStackTrace();
 			throw new PacketPluginHookInitializationException("Failed to load biomes.");
 		}
-		ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(plugin, PacketType.Play.Server.MAP_CHUNK, PacketType.Play.Server.MAP_CHUNK_BULK) {
+		ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(skyoseasons, PacketType.Play.Server.MAP_CHUNK, PacketType.Play.Server.MAP_CHUNK_BULK) {
 
 			@Override
-			public void onPacketSending(final PacketEvent event) {
-				try{
-					final Player player = event.getPlayer();
-					final SeasonWorld world = SkyoseasonsAPI.getSeasonWorldExact(player.getWorld());
-					if(world == null) {
-						return;
-					}
-					final PacketType type = event.getPacketType();
-					if(type == PacketType.Play.Server.MAP_CHUNK) {
-						translateMapChunk(event.getPacket(), event.getPlayer(), world.season);
-					}
-					else if(type == PacketType.Play.Server.MAP_CHUNK_BULK) {
-						translateMapChunkBulk(event.getPacket(), event.getPlayer(), world.season);
-					}
+			public final void onPacketSending(final PacketEvent event) {
+				final Player player = event.getPlayer();
+				final SeasonWorld world = SkyoseasonsAPI.getSeasonWorldExact(player.getWorld());
+				if(world == null) {
+					return;
 				}
-				catch(Exception e){
-					e.printStackTrace();
+				final PacketContainer packet = event.getPacket();
+				final PacketType type = packet.getType();
+				if(type == PacketType.Play.Server.MAP_CHUNK) {
+					translateMapChunk(packet, player, world.season);
 				}
-				
+				else if(type == PacketType.Play.Server.MAP_CHUNK_BULK) {
+					translateMapChunkBulk(packet, player, world.season);
+				}
 			}
 
 		});
@@ -118,12 +146,12 @@ public abstract class AbstractProtocolLibHook {
 		public int extraSectionNumber;
 		public int size;
 		
-		public ChunkInfo(final Player player, final int chunkMask, final int extraMask, final boolean hasContinous, final byte[] data, final int startIndex) {
+		public ChunkInfo(final Player player, final int chunkMask, final int extraMask, final boolean hasContinous, final byte[] a, final int startIndex) {
 			this.player = player;
 			this.chunkMask = chunkMask;
 			this.extraMask = extraMask;
 			this.hasContinous = hasContinous;
-			this.data = data;
+			this.data = a;
 			this.startIndex = startIndex;
 		}
 		
@@ -141,22 +169,51 @@ public abstract class AbstractProtocolLibHook {
 	
 	public class PacketPluginHookEvents implements Listener {
 		
-		@EventHandler
+		@EventHandler(priority = EventPriority.LOWEST)
 		private final void onWeatherChange(final WeatherChangeEvent event) {
+			if(event.isCancelled()) {
+				return;
+			}
 			final SeasonWorld world = SkyoseasonsAPI.getSeasonWorld(event.getWorld());
 			if(world == null) {
 				return;
 			}
+			if(!world.season.snowPlacerEnabled) {
+				return;
+			}
 			if(event.toWeatherState()) {
-				if(world.season.snowPlacerEnabled) {
-					final SnowPlacer task = new SnowPlacer(world);
-					task.runTaskLater(SkyoseasonsAPI.getPlugin(), 20L);
-					world.tasks.put(2, task);
+				final SnowPlacer task = new SnowPlacer(world, world.world.getLoadedChunks());
+				task.runTaskLater(SkyoseasonsAPI.getPlugin(), 20L);
+				world.tasks.put(2, task);
+			}
+			else {
+				final SnowPlacer task = (SnowPlacer)world.tasks.get(2);
+				if(task != null) {
+					task.cancel();
+					world.tasks.remove(2);
 				}
 			}
-			else if(world.tasks.containsKey(2)) {
-				world.tasks.get(2).get(0).cancel();
-				world.tasks.removeAll(2);
+		}
+		
+		@EventHandler(priority = EventPriority.LOWEST)
+		private final void onChunkLoad(final ChunkLoadEvent event) {
+			final SeasonWorld world = SkyoseasonsAPI.getSeasonWorld(event.getWorld());
+			if(world == null) {
+				return;
+			}
+			if(!world.season.snowPlacerEnabled) {
+				return;
+			}
+			if(world.world.hasStorm()) {
+				SnowPlacer task = (SnowPlacer)world.tasks.get(2);
+				if(task == null) {
+					task = new SnowPlacer(world, event.getChunk());
+					world.tasks.put(2, task);
+					task.runTaskLater(SkyoseasonsAPI.getPlugin(), 20L);
+				}
+				else {
+					task.addChunks(event.getChunk());
+				}
 			}
 		}
 		

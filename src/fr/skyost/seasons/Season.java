@@ -5,7 +5,6 @@ import java.util.Map.Entry;
 
 import org.bukkit.block.Biome;
 
-
 public class Season {
 	
 	public final String name;
@@ -30,7 +29,6 @@ public class Season {
 	public final int nightLength;
 	public final boolean nightMessageEnabled;
 	public final String nightMessage;
-	
 	
 	public final boolean snowPlacerEnabled;
 	public final boolean snowPlacerAllowStacks;

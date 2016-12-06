@@ -64,6 +64,18 @@ public class SkyoseasonsAPI {
 		return Skyoseasons.instance;
 	}
 	
+	/**
+	 * Gets the Spout hook.
+	 * 
+	 * @return The Spout hook or null if it is disabled.
+	 * 
+	 * @deprecated Spout has been removed.
+	 */
+	
+	@Deprecated
+	public static final Object getSpoutHook() {
+		return null;
+	}
 	
 	/**
 	 * Gets the ProtocolLib hook.

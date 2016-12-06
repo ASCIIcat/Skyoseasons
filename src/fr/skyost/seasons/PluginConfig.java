@@ -43,17 +43,12 @@ public class PluginConfig extends Skyoconfig {
 	@ConfigOptions(name = "logs.file.directory")
 	public String logsFileDir;
 	
-	@ConfigOptions(name = "enable.spout")
-	public boolean enableSpout = false;
 	@ConfigOptions(name = "enable.protocollib")
 	public boolean enableProtocolLib = true;
 	@ConfigOptions(name = "enable.metrics")
 	public boolean enableMetrics = true;
 	@ConfigOptions(name = "enable.skyupdater")
 	public boolean enableSkyupdater = true;
-	
-	@ConfigOptions(name = "enable.calendar")
-	public boolean enableCalendar = false;
 	
 	public PluginConfig(final File dataFolder) {
 		super(new File(dataFolder, "config.yml"), Arrays.asList("####################################################### #", "              Skyoseasons Configuration                 #", " Check http://dev.bukkit.org/bukkit-plugins/skyoseasons #", "               for more informations.                   #", "####################################################### #"));
